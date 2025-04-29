@@ -1,0 +1,211 @@
+```{r}
+import_data <- data.frame(
+  Country = c(
+    "Brazil", "China", "Colombia", "Dominican Republic", "Korea Republic (South)",
+    "Mexico", "Netherlands", "Panama", "United States of America", "Rest of the world", "Total"
+  ),
+  Year2019 = c(43.3, 92.5, 55.9, 17.8, 22.9, 34.3, 303.0, 66.3, 1224.8, 344.8, 2351.7),
+  Year2020 = c(37.5, 69.8, 46.9, 15.2, 8.0, 19.6, 257.0, 59.0, 864.8, 217.4, 1679.7),
+  Year2021 = c(54.6, 85.7, 59.9, 19.0, 24.3, 45.2, 320.8, 85.5, 1036.4, 215.4, 2092.5),
+  Year2022 = c(75.6, 140.7, 71.7, 20.0, 51.1, 39.0, 368.6, 79.3, 1328.1, 275.3, 2637.1),
+  Year2023 = c(80.3, 147.9, 79.7, 23.0, 59.5, 38.5, 385.3, 72.9, 1385.7, 287.9, 2749.7),
+  Year2024e = c(73.9, 185.5, 77.0, 27.0, 63.0, 40.6, 389.5, 77.3, 1451.2, 323.9, 2936.2),
+  Growth = c(11.7, 38.8, 9.5, 13.1, 53.0, -3.4, 7.1, -3.2, 13.3, 16.8, 13.4)
+)
+
+```
+
+
+```{r}
+# Load libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Original data
+df <- data.frame(
+  Country = c("Brazil", "China", "Colombia", "Dominicaanse Republiek", "Zuid-Korea",
+              "Mexico", "Nederland", "Panama", "Verenigde Staten", "Rest van de wereld"),
+  Jaar2021 = c(54.6, 85.7, 59.9, 19.0, 24.3, 45.2, 320.8, 85.5, 1036.4, 215.4),
+  Jaar2024 = c(73.9, 185.5, 77.0, 27.0, 63.0, 40.6, 389.5, 77.3, 1451.2, 323.9),
+  Growth = c(11.7, 38.8, 9.5, 13.1, 53.0, -3.4, 7.1, -3.2, 13.3, 16.8),
+  Dummy = c(1,1,0,1,0,0,0,1,1,1)
+)
+
+# Reshape data for ggplot
+df_long <- df %>%
+  pivot_longer(cols = c(Jaar2021, Jaar2024),
+               names_to = "Jaar", values_to = "Import") %>%
+  mutate(Jaar = recode(Jaar, "Jaar2021" = "2021", "Jaar2024" = "2024"))
+
+# Prepare scale factor for growth axis
+growth_scale <- max(df_long$Import) / max(df$Growth)
+
+# Start plot
+p <- ggplot(df_long, aes(x = reorder(Country, -Import), y = Import, fill = Jaar)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("2021" = "gray", "2024" = "#244568")) +  # Blue for 2021, Orange for 2024
+  geom_segment(data = df %>% filter(Growth > 0),
+               aes(x = Country, xend = Country,
+                   y = 0, yend = Growth * growth_scale),
+               inherit.aes = FALSE, color = "green", size = 1) +
+  geom_point(data = df %>% filter(Growth > 0),
+             aes(x = Country, y = Growth * growth_scale),
+             inherit.aes = FALSE, color = "green", size = 2) +
+  geom_text(data = df %>% filter(Growth > 0),
+            aes(x = Country, y = Growth * growth_scale, label = paste0(Growth, "%")),
+            inherit.aes = FALSE, vjust = -0.5, color = "green", size = 3) +
+  scale_y_continuous(
+    name = "Importwaarde (USD miljoenen)",
+    sec.axis = sec_axis(~ . / growth_scale, name = "Groei (%)")
+  ) +
+  labs(x = "") +
+  theme_minimal(base_size = 13) +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_blank(),
+    axis.text.x = element_text(angle = 90, vjust = 0.5)
+  )
+
+print(p)
+```
+
+```{r}
+# Load libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# Original data
+df <- data.frame(
+  Country = c("Brazil", "China", "Colombia", "Dominicaanse Republiek", "Zuid-Korea",
+              "Mexico", "Nederland", "Panama", "Verenigde Staten", "Rest van de wereld"),
+  Jaar2021 = c(54.6, 85.7, 59.9, 19.0, 24.3, 45.2, 320.8, 85.5, 1036.4, 215.4),
+  Jaar2024 = c(73.9, 185.5, 77.0, 27.0, 63.0, 40.6, 389.5, 77.3, 1451.2, 323.9),
+  Growth = c(11.7, 38.8, 9.5, 13.1, 53.0, -3.4, 7.1, -3.2, 13.3, 16.8),
+  Dummy = c(1,1,0,1,0,0,0,1,1,1)
+)
+
+# Reshape data
+df_long <- df %>%
+  pivot_longer(cols = c(Jaar2021, Jaar2024),
+               names_to = "Jaar", values_to = "Import") %>%
+  mutate(Jaar = recode(Jaar, "Jaar2021" = "2021", "Jaar2024" = "2024"))
+
+# Prepare scale factor
+growth_scale <- max(df_long$Import) / max(abs(df$Growth))
+
+# Define extended y-axis limits
+y_upper <- max(df_long$Import) * 1.15
+y_lower <- min(df$Growth) * growth_scale * 2.5  # extra headroom for bottom labels
+
+# Plot
+p <- ggplot(df_long, aes(x = reorder(Country, -Import), y = Import, fill = Jaar)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("2021" = "gray", "2024" = "#244568")) +
+  
+  # Green lollipops for positive growth
+  geom_segment(data = df %>% filter(Growth > 0),
+               aes(x = Country, xend = Country, y = 0, yend = Growth * growth_scale),
+               inherit.aes = FALSE, color = "green", size = 1) +
+  geom_point(data = df %>% filter(Growth > 0),
+             aes(x = Country, y = Growth * growth_scale),
+             inherit.aes = FALSE, color = "green", size = 2) +
+  geom_text(data = df %>% filter(Growth > 0),
+            aes(x = Country, y = Growth * growth_scale, label = paste0(Growth, "%")),
+            inherit.aes = FALSE, vjust = -1.5, color = "green", size = 3) +
+
+  # Red lollipops for negative growth
+  geom_segment(data = df %>% filter(Growth < 0),
+               aes(x = Country, xend = Country, y = 0, yend = Growth * growth_scale),
+               inherit.aes = FALSE, color = "red", size = 1) +
+  geom_point(data = df %>% filter(Growth < 0),
+             aes(x = Country, y = Growth * growth_scale),
+             inherit.aes = FALSE, color = "red", size = 2) +
+  geom_text(data = df %>% filter(Growth < 0),
+            aes(x = Country, y = Growth * growth_scale, label = paste0(Growth, "%")),
+            inherit.aes = FALSE, vjust = 2.8, color = "red", size = 3) +  # raised further down
+
+  scale_y_continuous(
+    name = "Importwaarde (USD miljoenen)",
+    sec.axis = sec_axis(~ . / growth_scale, name = "Groei (%)"),
+    limits = c(y_lower, y_upper)
+  ) +
+  labs(x = "") +
+  theme_minimal(base_size = 13) +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_blank(),
+    axis.text.x = element_text(angle = 90, vjust = 0.5)
+  )
+
+print(p)
+```
+
+
+```{r}
+# Load necessary libraries
+library(quantmod)
+library(dygraphs)
+library(xts)
+library(lubridate)
+
+# Get Brent crude oil price data
+getSymbols('POILBREUSDM', src = 'FRED')
+global.brent.crude <- POILBREUSDM
+
+# Define time range for display
+start_display <- as.Date("2021-01-01")
+end_display <- index(global.brent.crude)[nrow(global.brent.crude)]
+
+# Define the start of the recent trend (eind 2023)
+start_trend <- as.Date("2023-12-01")  # adjust this if necessary
+
+# Limit data to display range
+global.brent.crude <- global.brent.crude[paste0(start_display, "/", end_display)]
+
+# Create the interactive graph
+dygraph(global.brent.crude, main = "Brent crude oil prices (USD per barrel)",
+        ylab = "USD per barrel") %>%
+  dySeries("POILBREUSDM", label = "Brent crude") %>%
+  dyOptions(
+    fillGraph = FALSE,
+    colors = "#244568",
+    drawGrid = TRUE,
+    gridLineColor = "lightgray",
+    axisLineColor = "#244568",
+    axisLabelColor = "#244568",
+    labelsKMB = TRUE
+  ) %>%
+  dyRangeSelector(dateWindow = c(start_display, end_display)) %>%  # lock view
+  dyShading(from = start_trend, to = end_display, color = "#24456820") %>%
+  dyAnnotation(end_display, text = "↓", tooltip = "Prijsdaling", attachAtBottom = TRUE)
+
+library(ggplot2)
+library(scales)
+
+# Zet data om naar dataframe
+oil_df <- data.frame(Date = index(global.brent.crude),
+                     Price = as.numeric(global.brent.crude$POILBREUSDM))
+
+# Genereer statische grafiek
+p <- ggplot(oil_df, aes(x = Date, y = Price)) +
+  # Eerst de schaduw
+  geom_rect(aes(xmin = as.Date("2023-12-01"), xmax = max(Date),
+                ymin = -Inf, ymax = Inf),
+            fill = "lightgray", alpha = 0.5, inherit.aes = FALSE) +
+  # Dan de lijn
+  geom_line(color = "#244568", size = 1) +
+  labs(y = "Prijs in USD per vat", x = "") +
+  theme_minimal() +
+  theme(
+    plot.title = element_blank(),
+    axis.title.y = element_text(color = "#244568", size = 12),
+    axis.text = element_text(color = "#244568")
+  )
+
+# Opslaan als JPG
+ggsave("brent_crude_oil.jpg", plot = p, width = 10, height = 6, dpi = 300)
+
+```
+
